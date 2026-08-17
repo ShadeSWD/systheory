@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Морфологический ящик — живой расчёт</title>
+<meta name="description" content="Живой морфологический ящик: признаки системы и варианты их реализации, число сочетаний, отсев по условиям совместимости, ранжирование по сумме баллов. Пример — морфологическая таблица «Корабль» из лекции курса: корпус, энергетика, двигатель, движитель, стабилизация, управление.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧩</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+.tool { background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: var(--shadow); padding: 14px 16px; margin: 18px 0; }
+.tool h3 { margin-top: 14px; }
+.mo-axis { border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0; padding: 8px 12px; margin: 10px 0; background: #fcfbfe; }
+.mo-axis-h { display: flex; gap: 8px 12px; align-items: center; flex-wrap: wrap;
+  font: 14px system-ui, sans-serif; margin-bottom: 6px; }
+.mo-opts { display: flex; gap: 6px 10px; flex-wrap: wrap; }
+.mo-opt { display: flex; gap: 4px; align-items: center; }
+.mo-axis input[type=text], .mo-axis input[type=number] {
+  font: 13.5px system-ui, sans-serif; padding: 3px 7px; max-width: 100%;
+  border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); }
+.mo-ban { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  font: 14px system-ui, sans-serif; padding: 4px 0; }
+#bans { margin: 8px 0; }
+#banmsg { color: #b3382e; font: 13.5px system-ui, sans-serif; }
+</style>
+</head>
+<body>
+<script src="assets/site.js" data-root="./" data-page="p-morph"></script>
+<script src="assets/morph.js" defer></script>
+<main class="wrap">
+  <h1>Морфологический ящик</h1>
+
+  <div class="tldr">
+    <h2>Коротко</h2>
+    <ul>
+      <li>Метод раскладывает объект на независимые <b>признаки</b> (функции) и
+      для каждого перечисляет все мыслимые <b>способы реализации</b>; вариант
+      системы — это выбор по одному способу с каждой строки.</li>
+      <li>Число сочетаний равно произведению числа способов по строкам:
+      \(N = n_1 n_2 \ldots n_k\). Для таблицы «Корабль» из лекции это
+      6&nbsp;·&nbsp;6&nbsp;·&nbsp;6&nbsp;·&nbsp;6&nbsp;·&nbsp;5&nbsp;·&nbsp;5&nbsp;=&nbsp;32&nbsp;400
+      вариантов.</li>
+      <li><b>Условия совместимости</b> вычёркивают физически невозможные
+      сочетания. Один запрет убирает долю \(1/(n_X n_Y)\) всех вариантов —
+      обычно единицы процентов, поэтому отсев сам по себе задачу не решает.</li>
+      <li>Сильная сторона метода — систематичность: он находит сочетания,
+      которые при вольном перечислении ускользают. Слабая — он не умеет
+      выделить нужное решение из множества пустых.</li>
+      <li>Инструмент ниже пересчитывает всё это в реальном времени: правьте
+      признаки, варианты, запреты и баллы и смотрите, что происходит с
+      числами.</li>
+    </ul>
+  </div>
+
+  <p class="lead">Морфологический анализ — простейший и самый честный из методов
+  системного поиска: он не обещает угадать решение, он обещает не потерять ни
+  одного. Ниже — рабочая версия того самого примера, что разобран в лекции 3
+  курса: синтез облика корабля как морской несущей платформы из шести
+  компонентов. Теория метода — в главе
+  <a href="t-morph">«Морфологический анализ»</a>.</p>
+
+  <h2>Схема ящика</h2>
+  <p>Строки таблицы — признаки (функции), которые обязательно должны быть чем-то
+  реализованы; столбцы — конкретные способы реализации. Одно сочетание — это
+  ломаная, пересекающая каждую строку ровно один раз. Красной рамкой отмечена пара
+  вариантов, запрещённая условиями совместимости: скуловые кили как средство
+  стабилизации не согласуются с корпусом, использующим принцип воздушной
+  подушки (пример из лекции).</p>
+
+<svg viewBox="0 0 640 352" class="geo-board" style="max-width:640px">
+  <text x="10" y="24" style="font:600 11px system-ui;fill:#16161a">Морфологический ящик системы «Корабль»: шесть признаков и способы их реализации</text>
+  <text x="10" y="40" style="font:11px system-ui;fill:#6b6b74">признак</text>
+  <text x="168" y="40" text-anchor="middle" style="font:11px system-ui;fill:#6b6b74">1</text>
+  <text x="250" y="40" text-anchor="middle" style="font:11px system-ui;fill:#6b6b74">2</text>
+  <text x="332" y="40" text-anchor="middle" style="font:11px system-ui;fill:#6b6b74">3</text>
+  <text x="414" y="40" text-anchor="middle" style="font:11px system-ui;fill:#6b6b74">4</text>
+  <text x="496" y="40" text-anchor="middle" style="font:11px system-ui;fill:#6b6b74">5</text>
+  <text x="578" y="40" text-anchor="middle" style="font:11px system-ui;fill:#6b6b74">6</text>
+  <text x="10" y="72" style="font:600 11px system-ui;fill:#16161a">Корпус</text>
+  <rect x="128" y="52" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="168" y="72" text-anchor="middle" style="font:10px system-ui;fill:#16161a">подводный</text>
+  <rect x="210" y="52" width="80" height="32" rx="5" fill="#f0ebfa" stroke="#5b21b6" stroke-width="1.8"/>
+  <text x="250" y="72" text-anchor="middle" style="font:10px system-ui;fill:#4c1d95">водоизм.</text>
+  <rect x="292" y="52" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="332" y="72" text-anchor="middle" style="font:10px system-ui;fill:#16161a">полупогр.</text>
+  <rect x="374" y="52" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="414" y="72" text-anchor="middle" style="font:10px system-ui;fill:#16161a">глиссир.</text>
+  <rect x="456" y="52" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="496" y="72" text-anchor="middle" style="font:10px system-ui;fill:#16161a">подв. крыло</text>
+  <rect x="538" y="52" width="80" height="32" rx="5" fill="#fdeeee" stroke="#b3382e" stroke-width="1.6"/>
+  <text x="578" y="72" text-anchor="middle" style="font:10px system-ui;fill:#b3382e">возд. подушка</text>
+  <circle cx="610" cy="59" r="3.6" fill="#b3382e"/>
+  <text x="10" y="114" style="font:600 11px system-ui;fill:#16161a">Энергия</text>
+  <rect x="128" y="94" width="80" height="32" rx="5" fill="#f0ebfa" stroke="#5b21b6" stroke-width="1.8"/>
+  <text x="168" y="114" text-anchor="middle" style="font:10px system-ui;fill:#4c1d95">дизель-ген.</text>
+  <rect x="210" y="94" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="250" y="114" text-anchor="middle" style="font:10px system-ui;fill:#16161a">турбоген.</text>
+  <rect x="292" y="94" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="332" y="114" text-anchor="middle" style="font:10px system-ui;fill:#16161a">валогенер.</text>
+  <rect x="374" y="94" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="414" y="114" text-anchor="middle" style="font:10px system-ui;fill:#16161a">ветрогенер.</text>
+  <rect x="456" y="94" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="496" y="114" text-anchor="middle" style="font:10px system-ui;fill:#16161a">аккумул.</text>
+  <rect x="538" y="94" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="578" y="114" text-anchor="middle" style="font:10px system-ui;fill:#16161a">реактор</text>
+  <text x="10" y="156" style="font:600 11px system-ui;fill:#16161a">Двигатель</text>
+  <rect x="128" y="136" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="168" y="156" text-anchor="middle" style="font:10px system-ui;fill:#16161a">пар. машина</text>
+  <rect x="210" y="136" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="250" y="156" text-anchor="middle" style="font:10px system-ui;fill:#16161a">пар. турбина</text>
+  <rect x="292" y="136" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="332" y="156" text-anchor="middle" style="font:10px system-ui;fill:#16161a">газ. турбина</text>
+  <rect x="374" y="136" width="80" height="32" rx="5" fill="#f0ebfa" stroke="#5b21b6" stroke-width="1.8"/>
+  <text x="414" y="156" text-anchor="middle" style="font:10px system-ui;fill:#4c1d95">электромотор</text>
+  <rect x="456" y="136" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="496" y="156" text-anchor="middle" style="font:10px system-ui;fill:#16161a">реактивный</text>
+  <rect x="538" y="136" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="578" y="156" text-anchor="middle" style="font:10px system-ui;fill:#16161a">роторный</text>
+  <text x="10" y="198" style="font:600 11px system-ui;fill:#16161a">Движитель</text>
+  <rect x="128" y="178" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="168" y="198" text-anchor="middle" style="font:10px system-ui;fill:#16161a">парус</text>
+  <rect x="210" y="178" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="250" y="198" text-anchor="middle" style="font:10px system-ui;fill:#16161a">роторный</text>
+  <rect x="292" y="178" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="332" y="198" text-anchor="middle" style="font:10px system-ui;fill:#16161a">крыльчатый</text>
+  <rect x="374" y="178" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="414" y="198" text-anchor="middle" style="font:10px system-ui;fill:#16161a">водомётный</text>
+  <rect x="456" y="178" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="496" y="198" text-anchor="middle" style="font:10px system-ui;fill:#16161a">гребн. колесо</text>
+  <rect x="538" y="178" width="80" height="32" rx="5" fill="#f0ebfa" stroke="#5b21b6" stroke-width="1.8"/>
+  <text x="578" y="198" text-anchor="middle" style="font:10px system-ui;fill:#4c1d95">гребн. винт</text>
+  <text x="10" y="240" style="font:600 11px system-ui;fill:#16161a">Стабилизация</text>
+  <rect x="128" y="220" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="168" y="240" text-anchor="middle" style="font:10px system-ui;fill:#16161a">гироскоп</text>
+  <rect x="210" y="220" width="80" height="32" rx="5" fill="#f0ebfa" stroke="#5b21b6" stroke-width="1.8"/>
+  <text x="250" y="240" text-anchor="middle" style="font:10px system-ui;fill:#4c1d95">пасс. цист.</text>
+  <rect x="292" y="220" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="332" y="240" text-anchor="middle" style="font:10px system-ui;fill:#16161a">акт. цист.</text>
+  <rect x="374" y="220" width="80" height="32" rx="5" fill="#fdeeee" stroke="#b3382e" stroke-width="1.6"/>
+  <text x="414" y="240" text-anchor="middle" style="font:10px system-ui;fill:#b3382e">скул. кили</text>
+  <circle cx="446" cy="227" r="3.6" fill="#b3382e"/>
+  <rect x="456" y="220" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="496" y="240" text-anchor="middle" style="font:10px system-ui;fill:#16161a">борт. рули</text>
+  <text x="10" y="282" style="font:600 11px system-ui;fill:#16161a">Управление</text>
+  <rect x="128" y="262" width="80" height="32" rx="5" fill="#f0ebfa" stroke="#5b21b6" stroke-width="1.8"/>
+  <text x="168" y="282" text-anchor="middle" style="font:10px system-ui;fill:#4c1d95">простой руль</text>
+  <rect x="210" y="262" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="250" y="282" text-anchor="middle" style="font:10px system-ui;fill:#16161a">с закрылком</text>
+  <rect x="292" y="262" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="332" y="282" text-anchor="middle" style="font:10px system-ui;fill:#16161a">насадка</text>
+  <rect x="374" y="262" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="414" y="282" text-anchor="middle" style="font:10px system-ui;fill:#16161a">активный руль</text>
+  <rect x="456" y="262" width="80" height="32" rx="5" fill="#ffffff" stroke="#c8c6d0" stroke-width="1"/>
+  <text x="496" y="282" text-anchor="middle" style="font:10px system-ui;fill:#16161a">подрулив.</text>
+  <path d="M 250 84 L 250 89 L 168 89 L 168 94 M 168 126 L 168 131 L 414 131 L 414 136 M 414 168 L 414 173 L 578 173 L 578 178 M 578 210 L 578 215 L 250 215 L 250 220 M 250 252 L 250 257 L 168 257 L 168 262" fill="none" stroke="#5b21b6" stroke-width="1.8" stroke-dasharray="5 4"/>
+  <circle cx="250" cy="84" r="3" fill="#5b21b6"/>
+  <circle cx="168" cy="126" r="3" fill="#5b21b6"/>
+  <circle cx="414" cy="168" r="3" fill="#5b21b6"/>
+  <circle cx="578" cy="210" r="3" fill="#5b21b6"/>
+  <circle cx="250" cy="252" r="3" fill="#5b21b6"/>
+  <circle cx="168" cy="262" r="3" fill="#5b21b6"/>
+  <circle cx="16" cy="316" r="3" fill="#5b21b6"/>
+  <text x="26" y="320" style="font:11px system-ui;fill:#4c1d95">выбранное сочетание — по одному варианту с каждой строки</text>
+  <circle cx="16" cy="334" r="3.6" fill="#b3382e"/>
+  <text x="26" y="338" style="font:11px system-ui;fill:#b3382e">запрещённая пара: скуловые кили × воздушная подушка</text>
+</svg>
+  <div class="caption">Морфологический ящик системы «Корабль» по лекции 3.
+  Пунктирная ломаная — один из 32 400 вариантов: водоизмещающий корпус,
+  дизель-генератор, электромотор, гребной винт, пассивные успокоительные
+  цистерны, простой руль. Красные ячейки образуют запрещённую пару: любая
+  ломаная, проходящая одновременно через обе, отбраковывается.</div>
+
+  <h2>Сколько получается вариантов</h2>
+  <p>Число сочетаний считается прямым перемножением. Для таблицы из лекции
+  шесть признаков дают по 6, 6, 6, 6, 5 и 5 способов реализации:</p>
+  <div class="calc-row">\(N = n_1 n_2 n_3 n_4 n_5 n_6\) =
+    <span style="color:#6b6b74">6 · 6 · 6 · 6 · 5 · 5</span> =
+    <b>32 400</b> вариантов</div>
+  <p>Ручной перебор такого числа вариантов нереален: даже при одной минуте на
+  вариант это</p>
+  <div class="calc-row">\(T = N \cdot t_1\) =
+    <span style="color:#6b6b74">32 400 · 1 мин</span> =
+    <b>540 ч</b> &asymp; 68 рабочих дней</div>
+  <p>Добавление всего одного признака с пятью реализациями — скажем, «тип
+  ледового усиления» — умножает это число ещё на пять:</p>
+  <div class="calc-row">\(N' = N \cdot n_7\) =
+    <span style="color:#6b6b74">32 400 · 5</span> =
+    <b>162 000</b> вариантов</div>
+  <p>Именно поэтому метод в чистом виде применяют не для полного перебора, а
+  как каталог возможностей: он гарантирует, что ни один способ реализации не
+  забыт, а дальше поле сужают ограничениями и оценкой.</p>
+
+  <h2>Как ограничения сужают поле</h2>
+  <p>Запрет «вариант <i>i</i> признака&nbsp;X несовместим с вариантом
+  <i>j</i> признака&nbsp;Y» фиксирует по одному значению на двух осях,
+  оставляя остальные свободными. Доля вычёркиваемых сочетаний равна</p>
+  <div class="calc-row">\(\Delta N = \dfrac{N}{n_X n_Y}\) =
+    <span style="color:#6b6b74">32 400 / (5 · 6)</span> =
+    <b>1 080</b> сочетаний, то есть 3,3 % от всех</div>
+  <p>Здесь \(n_X = 5\) — число средств стабилизации, \(n_Y = 6\) — число типов
+  корпуса. После этого запрета остаётся</p>
+  <div class="calc-row">\(N_1 = N - \Delta N\) =
+    <span style="color:#6b6b74">32 400 − 1 080</span> =
+    <b>31 320</b> допустимых сочетаний</div>
+  <p>Добавим второй естественный запрет: гребное колесо тоже несовместимо с
+  корпусом на воздушной подушке. Сам по себе он вычёркивает</p>
+  <div class="calc-row">\(\Delta N_2 = \dfrac{N}{n_{\text{движ}} n_Y}\) =
+    <span style="color:#6b6b74">32 400 / (6 · 6)</span> =
+    <b>900</b> сочетаний</div>
+  <p>Но два запрета <i>пересекаются</i>: оба фиксируют один и тот же тип
+  корпуса, и сочетания «воздушная подушка + скуловые кили + гребное колесо»
+  попадают под оба сразу. По формуле включений-исключений</p>
+  <div class="calc-row">\(|A_1 \cup A_2| = |A_1| + |A_2| - |A_1 \cap A_2|\),
+    где \(|A_1 \cap A_2| = \dfrac{N}{n_{\text{ст}} n_{\text{движ}} n_Y}\) =
+    <span style="color:#6b6b74">32 400 / (5 · 6 · 6)</span> = <b>180</b></div>
+  <div class="calc-row">\(|A_1 \cup A_2|\) =
+    <span style="color:#6b6b74">1 080 + 900 − 180</span> = <b>1 800</b></div>
+  <div class="calc-row">\(N_2 = N - |A_1 \cup A_2|\) =
+    <span style="color:#6b6b74">32 400 − 1 800</span> =
+    <b>30 600</b> допустимых сочетаний</div>
+  <p>Именно это число показывает инструмент при загрузке страницы — и
+  показывает его дважды: по формуле включений-исключений и прямым перебором
+  всех 32 400 сочетаний. Совпадение двух независимых способов счёта выведено
+  на экран отдельным индикатором.</p>
+
+  <svg viewBox="0 0 640 226" class="geo-board" style="max-width:640px">
+    <text x="30" y="30" style="font:600 11px system-ui;fill:#16161a">Множество всех сочетаний: 32 400</text>
+    <rect x="30" y="42" width="580" height="132" rx="8" fill="#ffffff" stroke="#16161a" stroke-width="1.4"/>
+    <rect x="60" y="68" width="150" height="80" rx="6" fill="rgba(179,56,46,.12)" stroke="#b3382e" stroke-width="1.3"/>
+    <rect x="170" y="68" width="150" height="80" rx="6" fill="rgba(179,56,46,.12)" stroke="#b3382e" stroke-width="1.3"/>
+    <rect x="170" y="68" width="40" height="80" fill="rgba(179,56,46,.24)"/>
+    <text x="115" y="106" text-anchor="middle" style="font:600 11px system-ui;fill:#b3382e">900</text>
+    <text x="115" y="122" text-anchor="middle" style="font:10px system-ui;fill:#b3382e">только запрет 1</text>
+    <text x="265" y="106" text-anchor="middle" style="font:600 11px system-ui;fill:#b3382e">720</text>
+    <text x="265" y="122" text-anchor="middle" style="font:10px system-ui;fill:#b3382e">только запрет 2</text>
+    <path d="M 190 68 L 190 58 L 250 58" fill="none" stroke="#b3382e" stroke-width="1"/>
+    <text x="256" y="61" style="font:10px system-ui;fill:#b3382e">оба запрета сразу: 180</text>
+    <text x="470" y="100" text-anchor="middle" style="font:600 11px system-ui;fill:#1a7f37">допустимо</text>
+    <text x="470" y="118" text-anchor="middle" style="font:600 12px system-ui;fill:#1a7f37">30 600</text>
+    <text x="470" y="136" text-anchor="middle" style="font:10px system-ui;fill:#6b6b74">94,4 % сочетаний</text>
+    <text x="30" y="196" style="font:11px system-ui;fill:#6b6b74">Вычеркнуто 1 080 + 900 − 180 = 1 800 сочетаний. Площади показаны условно: реально запреты</text>
+    <text x="30" y="212" style="font:11px system-ui;fill:#6b6b74">отсекают лишь несколько процентов поля, и главная работа по сужению остаётся за оценкой.</text>
+  </svg>
+  <div class="caption">Как два пересекающихся запрета вычёркивают сочетания.
+  Оба фиксируют один и тот же тип корпуса, поэтому их области перекрываются, и
+  простое сложение дало бы завышенную оценку 1 980 вместо верных 1 800.</div>
+
+  <h2>Инструмент</h2>
+  <p>Признаки и варианты можно переименовывать, добавлять и удалять; число у
+  каждого варианта — сводный балл 0…10, по сумме которых ранжируются сочетания.
+  Запреты добавляются парой «вариант — вариант».</p>
+
+  <div class="tool">
+    <h3>Шаг 1. Признаки и способы реализации</h3>
+    <div id="axes"></div>
+    <div class="controls">
+      <button class="btn" type="button" id="btn-axadd">+ добавить признак</button>
+      <button class="btn" type="button" id="btn-reset">Сбросить к примеру из лекции</button>
+    </div>
+
+    <h3>Шаг 2. Условия совместимости</h3>
+    <div class="controls">
+      <label>несовместимы: <select id="ban-a"></select></label>
+      <label>и <select id="ban-b"></select></label>
+      <button class="btn primary" type="button" id="btn-banadd">Добавить запрет</button>
+      <span id="banmsg"></span>
+    </div>
+    <div id="bans"></div>
+
+    <h3>Шаг 3. Сколько вариантов осталось</h3>
+    <div id="stats" class="out"></div>
+
+    <h3>Шаг 4. Допустимые сочетания</h3>
+    <div id="list" class="out"></div>
+
+    <h3>Шаг 5. Лучшие сочетания по сумме баллов</h3>
+    <div id="top" class="out"></div>
+  </div>
+
+  <div class="note"><b>Об оценке в баллах.</b> В лекции каждый компонент
+  оценивается экспертами по восьми качествам: массогабаритные характеристики,
+  энергопотребление, взрывопожаробезопасность, ремонтопригодность,
+  экологическая чистота, надёжность, стоимость изготовления, стоимость
+  эксплуатации; целевой функцией служит максимизируемая сумма баллов,
+  оценивающая систему в целом. В инструменте эти восемь оценок свёрнуты в один
+  сводный балл на вариант — это упрощение, оно сохраняет аддитивную структуру
+  целевой функции, но скрывает конфликты между качествами. Значения баллов,
+  проставленные по умолчанию, иллюстративны: они отражают пригодность варианта
+  для транспортного судна умеренной скорости и не являются результатом
+  экспертизы. Полноценная работа с несколькими критериями сразу — на странице
+  <a href="p-pareto">многокритериального выбора</a>.</div>
+
+  <h2>Как этим пользоваться</h2>
+  <ol>
+    <li><b>Сформулируйте задачу и определите признаки.</b> Признак — это
+    функция, которая обязательно должна быть чем-то реализована. Признаки
+    должны быть по возможности независимы: если два признака почти всегда
+    определяют друг друга, их лучше объединить в один.</li>
+    <li><b>Перечислите варианты «с запасом».</b> На этом шаге не отбрасывайте
+    ничего по причине «так не делают» — именно ради непривычных сочетаний метод
+    и применяется. Отбраковка — отдельный шаг.</li>
+    <li><b>Введите запреты.</b> Запрет должен быть <i>физическим или
+    нормативным</i>, а не вкусовым: скуловые кили не могут работать при
+    отсутствии контакта корпуса с водой; парусный движитель бессмыслен для
+    подводного корпуса; атомный реактор не размещается на судне
+    водоизмещением в тысячу тонн.</li>
+    <li><b>Оцените и ранжируйте.</b> Баллы дают первый, грубый порядок. Далее
+    десяток лучших сочетаний берут в проработку и сравнивают уже по-настоящему
+    — с расчётом масс, мощности и экономики.</li>
+    <li><b>Примените метод повторно.</b> К выбранному варианту можно применить
+    морфологический анализ ещё раз, разложив на признаки уже его отдельный
+    компонент, — в лекции это отмечено как возможность более глубокого
+    системного анализа.</li>
+  </ol>
+
+  <div class="note warn"><b>Честно о слабости метода.</b> Морфологический
+  анализ, как сказано в лекции, «способен дать очень много комбинационных идей,
+  однако он не способен выделить из множества пустых идей единственную,
+  необходимую и достаточную для решения задачи». Он не ломает старую технологию
+  творчества, основанную на переборе вариантов, — он лишь интенсифицирует метод
+  проб и ошибок. Кроме того, метод молчаливо предполагает, что все нужные
+  способы реализации уже известны и перечислены; если требуемого элемента ещё
+  не существует, никакое сочетание известного его не даст, и задача становится
+  изобретательской — то есть переходит в область
+  <a href="p-contradiction">разрешения противоречий</a>.</div>
+
+  <p class="small">Смежные материалы:
+  <a href="t-morph">теория морфологического анализа</a> ·
+  <a href="t-creative">другие методы поиска решений</a> ·
+  <a href="p-pareto">многокритериальный выбор</a> ·
+  <a href="https://shadeswd.duckdns.org/design/">выбор облика судна</a> ·
+  <a href="https://shadeswd.duckdns.org/relmet/">метрики отношений</a>.</p>
+</main>
+</body>
+</html>
