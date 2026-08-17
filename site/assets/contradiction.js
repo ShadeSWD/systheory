@@ -175,9 +175,6 @@ const DEFAULT = { system: 'корпус транспортного судна', 
 
 const st = Object.assign({}, DEFAULT);
 
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
-  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pname = (n) => (PARAMS.find((p) => p.n === n) || {}).name || '—';
 
 function buildSelects() {
@@ -294,7 +291,5 @@ function init() {
   });
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else { init(); }
+onReady(init);
 })();

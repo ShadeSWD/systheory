@@ -6,9 +6,6 @@
 'use strict';
 (function () {
 
-let uid = 0;
-const nid = () => 'k' + (++uid);
-
 /* ——— исходные данные ——— */
 
 function demoState() {
@@ -41,9 +38,6 @@ let st = demoState();
 
 /* ——— мелкие помощники ——— */
 
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s).replace(/[&<>"]/g, (ch) =>
-  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 const code = (i) => 'A' + (i + 1);
 const num = (x) => (Number.isFinite(+x) ? +x : 0);
 
@@ -262,15 +256,7 @@ function renderConv(an) {
     }
   }
   $('conv').innerHTML = h;
-  if (window.renderMathInElement) {
-    try {
-      window.renderMathInElement($('conv'), {
-        delimiters: [{ left: '$$', right: '$$', display: true },
-          { left: '\\(', right: '\\)', display: false }],
-        throwOnError: false,
-      });
-    } catch (e) { /* KaTeX ещё не подгружен — формула останется текстом */ }
-  }
+  mathify($('conv'));
 }
 
 /* ——— отрисовка: график ——— */
@@ -603,7 +589,5 @@ function init() {
   $('sel-y').addEventListener('change', () => { st.py = $('sel-y').value; renderOut(); });
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else { init(); }
+onReady(init);
 })();

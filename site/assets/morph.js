@@ -5,8 +5,6 @@
 (function () {
 
 const ENUM_LIMIT = 400000;   // до этого числа сочетаний перебираем явно
-let uid = 0;
-const nid = () => 'k' + (++uid);
 
 function lectureState() {
   const ax = (name, opts) => ({
@@ -45,10 +43,8 @@ function lectureState() {
 
 let st = lectureState();
 
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
-  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const fmt = (n) => n.toLocaleString('ru-RU');
+/* число сочетаний: целое с разделителями разрядов */
+const fmtCount = (n) => n.toLocaleString('ru-RU');
 const axById = (id) => st.axes.find((a) => a.id === id);
 const optById = (a, id) => a && a.opts.find((o) => o.id === id);
 
@@ -183,17 +179,17 @@ function renderStats(list) {
   const allowed = allowedCountIE();
   const cut = allowed === null ? null : N - allowed;
   let h = `<div class="calc-row">\\(N = n_1 n_2 \\ldots n_k\\) = `
-    + `<span style="color:#6b6b74">${factors.join(' · ')}</span> = <b>${fmt(N)}</b> сочетаний</div>`;
+    + `<span style="color:#6b6b74">${factors.join(' · ')}</span> = <b>${fmtCount(N)}</b> сочетаний</div>`;
   if (allowed === null) {
     h += '<div class="calc-row">Запретов слишком много для точного подсчёта — уберите часть.</div>';
   } else {
-    h += `<div class="calc-row">Запреты вычёркивают <b>${fmt(cut)}</b> сочетаний `
+    h += `<div class="calc-row">Запреты вычёркивают <b>${fmtCount(cut)}</b> сочетаний `
       + `(${(N ? 100 * cut / N : 0).toFixed(2).replace('.', ',')} % от общего числа)</div>`
-      + `<div class="calc-row">Допустимых сочетаний: <span class="readout">${fmt(allowed)}</span></div>`;
+      + `<div class="calc-row">Допустимых сочетаний: <span class="readout">${fmtCount(allowed)}</span></div>`;
     if (list) {
       const check = list.length === allowed ? 'ok' : 'bad';
       h += `<div class="calc-row"><span class="badge ${check}">`
-        + `перебор даёт ${fmt(list.length)} — ${check === 'ok' ? 'совпадает с формулой' : 'расхождение!'}`
+        + `перебор даёт ${fmtCount(list.length)} — ${check === 'ok' ? 'совпадает с формулой' : 'расхождение!'}`
         + '</span></div>';
     } else {
       h += '<div class="calc-row muted">Сочетаний слишком много для перечисления — '
@@ -216,8 +212,8 @@ function renderList(list) {
   const rows = shown.map((c, i) =>
     `<tr><td class="num">${i + 1}</td>${comboRow(c)}<td class="num">${c.score}</td></tr>`).join('');
   $('list').innerHTML = `<table class="el"><thead>${head}</thead><tbody>${rows}</tbody></table>`
-    + `<div class="controls"><span class="muted">показано ${fmt(shown.length)} из `
-    + `${fmt(list.length)} допустимых</span>`
+    + `<div class="controls"><span class="muted">показано ${fmtCount(shown.length)} из `
+    + `${fmtCount(list.length)} допустимых</span>`
     + (st.show < list.length
       ? '<button class="btn small" type="button" data-act="more">показать ещё 20</button>' : '')
     + (st.show > 20
@@ -237,15 +233,7 @@ function render() {
   const list = enumerate();
   renderStats(list);
   renderList(list);
-  if (window.renderMathInElement) {
-    try {
-      window.renderMathInElement($('stats'), {
-        delimiters: [{ left: '$$', right: '$$', display: true },
-          { left: '\\(', right: '\\)', display: false }],
-        throwOnError: false,
-      });
-    } catch (e) { /* KaTeX ещё не загружен — формула останется текстом */ }
-  }
+  mathify($('stats'));
 }
 
 /* ——— события ——— */
@@ -325,7 +313,5 @@ function init() {
   $('btn-reset').addEventListener('click', () => { st = lectureState(); render(); });
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else { init(); }
+onReady(init);
 })();
